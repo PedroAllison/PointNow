@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>PointNow</title>
+<style>
+*{box-sizing:border-box;margin:0;font-family:system-ui,sans-serif}
+body{background:#0f172a;color:#e2e8f0;min-height:100vh;padding:24px 16px}
+h1{text-align:center;font-size:26px}
+#clock{text-align:center;font-size:44px;font-weight:700;margin:12px 0 4px}
+#date{text-align:center;color:#94a3b8;margin-bottom:16px}
+#status{text-align:center;margin-bottom:20px;font-weight:600}
+.btns{display:flex;gap:12px}
+.btn{flex:1;padding:28px 0;border:0;border-radius:16px;font-size:20px;font-weight:700;color:#fff}
+.in{background:#16a34a}.out{background:#dc2626}
+.btn:disabled{opacity:.3}
+h2{margin:28px 0 10px;font-size:18px}
+.day{background:#1e293b;border-radius:12px;padding:12px;margin-bottom:10px}
+.day b{display:block;margin-bottom:6px}
+.row{display:flex;justify-content:space-between;padding:4px 0;color:#cbd5e1}
+.tot{color:#38bdf8;font-weight:600;margin-top:4px}
+.ov{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;padding:20px}
+.box{background:#1e293b;border-radius:16px;padding:20px;width:100%;max-width:360px;text-align:center}
+.box p{margin:10px 0 18px;font-size:18px}
+.box input{width:100%;padding:12px;margin-bottom:10px;border-radius:10px;border:1px solid #475569;background:#0f172a;color:#fff;font-size:17px}
+.acts{display:flex;gap:10px}.acts button{flex:1;padding:14px;border:0;border-radius:10px;font-size:17px;font-weight:700}
+.y{background:#16a34a;color:#fff}.n{background:#475569;color:#fff}
+.rem{display:flex;gap:6px;margin-bottom:8px}.rem input{padding:10px;border-radius:8px;border:1px solid #475569;background:#0f172a;color:#fff;font-size:15px}
+.rem input[type=time]{width:105px}.rem input[type=text]{flex:1;min-width:0}.rem button{background:#dc2626;color:#fff;border:0;border-radius:8px;width:40px}
+</style></head><body>
+<h1>PointNow</h1>
+<div id="clock"></div><div id="date"></div><div id="status"></div>
+<div class="btns">
+ <button class="btn in" id="bIn" onclick="ask('entrada')">ENTRADA</button>
+ <button class="btn out" id="bOut" onclick="ask('saida')">SAÍDA</button>
+</div>
+<h2>🔔 Lembretes</h2>
+<div class="day" id="cfg"></div>
+<button class="btn" style="background:#2563eb;padding:12px;font-size:16px;width:100%" onclick="addRem()">+ Adicionar lembrete</button>
+<button class="btn" style="background:#16a34a;padding:12px;font-size:16px;width:100%;margin-top:8px" onclick="saveRem()">Salvar lembretes</button>
+<h2>Registros</h2><div id="list"></div>
+
+<div class="ov" id="ov1"><div class="box"><h3 id="t1"></h3>
+ <p>Confirmar horário atual?<br><b id="now1"></b></p>
+ <div class="acts"><button class="y" onclick="yes()">Sim</button><button class="n" onclick="no()">Não</button></div></div></div>
+<div class="ov" id="ov2"><div class="box"><h3 id="t2"></h3><p>Escolha dia e horário</p>
+ <input type="date" id="d"><input type="time" id="h">
+ <div class="acts"><button class="y" onclick="saveManual()">Marcar</button><button class="n" onclick="close2()">Cancelar</button></div></div></div>
+<script>
+const K='pointnow_regs';let regs=JSON.parse(localStorage.getItem(K)||'[]'),tipo=null;
+const $=id=>document.getElementById(id),p=n=>String(n).padStart(2,'0');
+const fh=d=>p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds());
+const fd=d=>p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+d.getFullYear();
+const last=()=>regs.length?regs[regs.length-1].tipo:'saida';
+function tick(){const n=new Date();$('clock').textContent=fh(n);$('date').textContent=n.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'});if(tipo)$('now1').textContent=fd(n)+' '+fh(n)}
+function ask(t){tipo=t;$('t1').textContent=$('t2').textContent=t==='entrada'?'Registrar ENTRADA':'Registrar SAÍDA';tick();$('ov1').style.display='flex'}
+function add(d){regs.push({tipo,ts:d.getTime()});regs.sort((a,b)=>a.ts-b.ts);localStorage.setItem(K,JSON.stringify(regs));tipo=null;render()}
+function yes(){$('ov1').style.display='none';add(new Date())}
+function no(){$('ov1').style.display='none';const n=new Date();$('d').value=n.getFullYear()+'-'+p(n.getMonth()+1)+'-'+p(n.getDate());$('h').value=p(n.getHours())+':'+p(n.getMinutes());$('ov2').style.display='flex'}
+function close2(){$('ov2').style.display='none';tipo=null}
+function saveManual(){if(!$('d').value||!$('h').value)return alert('Preencha dia e horário');const[y,m,dd]=$('d').value.split('-'),[hh,mm]=$('h').value.split(':');$('ov2').style.display='none';add(new Date(y,m-1,dd,hh,mm))}
+function render(){const l=last();$('bIn').disabled=l==='entrada';$('bOut').disabled=l!=='entrada';
+ $('status').textContent=l==='entrada'?'🟢 Trabalhando desde '+fh(new Date(regs[regs.length-1].ts)).slice(0,5):'⚪ Fora do expediente';
+ const g={};regs.forEach(r=>{const k=fd(new Date(r.ts));(g[k]=g[k]||[]).push(r)});
+ $('list').innerHTML=Object.keys(g).reverse().map(k=>{let tot=0,ini=null;g[k].forEach(r=>{if(r.tipo==='entrada')ini=r.ts;else if(ini){tot+=r.ts-ini;ini=null}});
+  const mins=Math.round(tot/60000);
+  return '<div class="day"><b>'+k+'</b>'+g[k].map(r=>'<div class="row"><span>'+(r.tipo==='entrada'?'▶ Entrada':'■ Saída')+'</span><span>'+fh(new Date(r.ts))+'</span></div>').join('')+'<div class="tot">Total: '+Math.floor(mins/60)+'h '+p(mins%60)+'min</div></div>'}).join('')||'<p style="color:#64748b">Nenhum registro ainda.</p>'}
+const RK='pointnow_rem';
+let rems=JSON.parse(localStorage.getItem(RK)||'null')||[{h:'08:00',m:'Bom dia! Já bateu o ponto de ENTRADA?'},{h:'18:00',m:'Fim do expediente! Já bateu o ponto de SAÍDA?'}];
+const esc=s=>s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+function renderRem(){$('cfg').innerHTML=rems.map((r,i)=>'<div class="rem"><input type="time" value="'+r.h+'" onchange="rems['+i+'].h=this.value"><input type="text" placeholder="Mensagem" value="'+esc(r.m)+'" oninput="rems['+i+'].m=this.value"><button onclick="rems.splice('+i+',1);renderRem()">✕</button></div>').join('')||'<p style="color:#64748b">Nenhum lembrete.</p>'}
+function addRem(){rems.push({h:'12:00',m:'Já bateu o ponto?'});renderRem()}
+async function saveRem(){rems=rems.filter(r=>r.h);localStorage.setItem(RK,JSON.stringify(rems));renderRem();
+ const LN=window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.LocalNotifications;
+ if(!LN)return alert('Lembretes salvos (notificações só funcionam no app instalado).');
+ try{let pm=await LN.checkPermissions();if(pm.display!=='granted')pm=await LN.requestPermissions();
+  if(pm.display!=='granted')return alert('Permita as notificações nas configurações do celular.');
+  const pend=await LN.getPending();if(pend.notifications.length)await LN.cancel({notifications:pend.notifications.map(n=>({id:n.id}))});
+  if(rems.length)await LN.schedule({notifications:rems.map((r,i)=>{const[hh,mm]=r.h.split(':').map(Number);return{id:i+1,title:'PointNow',body:r.m||'Já bateu o ponto?',schedule:{on:{hour:hh,minute:mm},repeats:true,allowWhileIdle:true}}})});
+  alert('Lembretes salvos! '+rems.length+' notificação(ões) diária(s) agendada(s).')}catch(e){alert('Erro ao agendar: '+e.message)}}
+renderRem();
+setInterval(tick,1000);tick();render();
+</script></body></html>
