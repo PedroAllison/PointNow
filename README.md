@@ -13,6 +13,7 @@ Abra o arquivo no celular e permita "Instalar apps de fontes desconhecidas".
   - **Não** → abre uma janela para escolher dia e horário.
 - O app identifica sozinho se o próximo registro é entrada ou saída (o botão errado fica desativado).
 - **Lembretes**: configure horários e a mensagem de cada notificação diária (ex.: 08:00 "Já bateu o ponto de entrada?"). Toque em *Salvar lembretes* e permita as notificações.
+- **Resumo do mês em PDF**: escolha o mês e toque em *Exportar PDF* — gera tabela com todas as entradas/saídas do dia 1 ao último dia, total por dia e total do mês, e abre a opção de salvar/compartilhar (WhatsApp, e-mail, Drive...).
 - Lista de registros por dia com total de horas trabalhadas. Dados ficam salvos no celular.
 
 ## Desenvolvimento

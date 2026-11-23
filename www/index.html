@@ -37,6 +37,8 @@ h2{margin:28px 0 10px;font-size:18px}
 <div class="day" id="cfg"></div>
 <button class="btn" style="background:#2563eb;padding:12px;font-size:16px;width:100%" onclick="addRem()">+ Adicionar lembrete</button>
 <button class="btn" style="background:#16a34a;padding:12px;font-size:16px;width:100%;margin-top:8px" onclick="saveRem()">Salvar lembretes</button>
+<h2>📄 Resumo do mês</h2>
+<div class="rem"><input type="month" id="mes" style="flex:1"><button style="background:#2563eb;width:auto;padding:0 16px;font-weight:700" onclick="exportPDF()">Exportar PDF</button></div>
 <h2>Registros</h2><div id="list"></div>
 
 <div class="ov" id="ov1"><div class="box"><h3 id="t1"></h3>
@@ -45,6 +47,7 @@ h2{margin:28px 0 10px;font-size:18px}
 <div class="ov" id="ov2"><div class="box"><h3 id="t2"></h3><p>Escolha dia e horário</p>
  <input type="date" id="d"><input type="time" id="h">
  <div class="acts"><button class="y" onclick="saveManual()">Marcar</button><button class="n" onclick="close2()">Cancelar</button></div></div></div>
+<script src="jspdf.umd.min.js"></script><script src="jspdf.plugin.autotable.min.js"></script>
 <script>
 const K='pointnow_regs';let regs=JSON.parse(localStorage.getItem(K)||'[]'),tipo=null;
 const $=id=>document.getElementById(id),p=n=>String(n).padStart(2,'0');
@@ -77,6 +80,31 @@ async function saveRem(){rems=rems.filter(r=>r.h);localStorage.setItem(RK,JSON.s
   const pend=await LN.getPending();if(pend.notifications.length)await LN.cancel({notifications:pend.notifications.map(n=>({id:n.id}))});
   if(rems.length)await LN.schedule({notifications:rems.map((r,i)=>{const[hh,mm]=r.h.split(':').map(Number);return{id:i+1,title:'PointNow',body:r.m||'Já bateu o ponto?',schedule:{on:{hour:hh,minute:mm},repeats:true,allowWhileIdle:true}}})});
   alert('Lembretes salvos! '+rems.length+' notificação(ões) diária(s) agendada(s).')}catch(e){alert('Erro ao agendar: '+e.message)}}
+(()=>{const n=new Date();$('mes').value=n.getFullYear()+'-'+p(n.getMonth()+1)})();
+async function exportPDF(){
+ const[y,m]=$('mes').value.split('-').map(Number);if(!y)return alert('Escolha o mês');
+ const ini=new Date(y,m-1,1).getTime(),fim=new Date(y,m,1).getTime();
+ const rs=regs.filter(r=>r.ts>=ini&&r.ts<fim);
+ const nomeMes=new Date(y,m-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+ const doc=new jspdf.jsPDF();
+ doc.setFontSize(18);doc.text('PointNow - Resumo de '+nomeMes,14,18);
+ doc.setFontSize(10);doc.text('Periodo: 01/'+p(m)+'/'+y+' a '+p(new Date(y,m,0).getDate())+'/'+p(m)+'/'+y+'   |   Gerado em '+fd(new Date())+' '+fh(new Date()).slice(0,5),14,25);
+ const g={};rs.forEach(r=>{const k=fd(new Date(r.ts));(g[k]=g[k]||[]).push(r)});
+ const body=[];let totMes=0;
+ Object.keys(g).forEach(k=>{let tot=0,ini=null;const pares=[];
+  g[k].forEach(r=>{if(r.tipo==='entrada'){ini=r;pares.push([r,null])}else{if(ini&&pares.length&&!pares[pares.length-1][1]){pares[pares.length-1][1]=r;tot+=r.ts-ini.ts;ini=null}else pares.push([null,r])}});
+  totMes+=tot;const mins=Math.round(tot/60000);
+  const dia=new Date(g[k][0].ts).toLocaleDateString('pt-BR',{weekday:'short'});
+  pares.forEach((pr,i)=>body.push([i?'':k+' ('+dia+')',pr[0]?fh(new Date(pr[0].ts)).slice(0,5):'-',pr[1]?fh(new Date(pr[1].ts)).slice(0,5):'-',i===pares.length-1?Math.floor(mins/60)+'h'+p(mins%60):'']))});
+ const tm=Math.round(totMes/60000);
+ doc.autoTable({startY:31,head:[['Dia','Entrada','Saida','Total do dia']],body:body.length?body:[['Nenhum registro no mes','','','']],
+  foot:[['Total do mes ('+Object.keys(g).length+' dias)','','',Math.floor(tm/60)+'h'+p(tm%60)]],headStyles:{fillColor:[37,99,235]},footStyles:{fillColor:[15,23,42]},styles:{fontSize:10}});
+ const nome='PointNow_'+y+'-'+p(m)+'.pdf';
+ const P=window.Capacitor&&Capacitor.Plugins;
+ if(P&&P.Filesystem&&P.Share&&Capacitor.isNativePlatform()){try{
+  const r=await P.Filesystem.writeFile({path:nome,data:doc.output('datauristring').split(',')[1],directory:'CACHE'});
+  await P.Share.share({title:nome,url:r.uri,dialogTitle:'Salvar ou enviar PDF'})}catch(e){if(!/cancel/i.test(e.message))alert('Erro: '+e.message)}}
+ else doc.save(nome)}
 renderRem();
 setInterval(tick,1000);tick();render();
 </script></body></html>
